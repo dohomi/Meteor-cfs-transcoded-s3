@@ -23,7 +23,7 @@ var outputKey = function (fileKey, presetId) {
  * @return {string}
  */
 var outputPrefix = function (fileKey) {
-    return fileKey + "/output"
+    return fileKey + "/output/"
 };
 /**
  * @param {string} fileKey
@@ -31,7 +31,7 @@ var outputPrefix = function (fileKey) {
  * @return {string}
  */
 var fullOutKey = function (fileKey, presetId) {
-    return outputPrefix(fileKey) + "/" + outputKey(fileKey, presetId)
+    return outputPrefix(fileKey)  + outputKey(fileKey, presetId);
 };
 /**
  * returns the thumbnail pattern name
@@ -43,7 +43,7 @@ var thumbnailPattern = function (presetId) {
 };
 /**
  *
- * @param {string}fileKey
+ * @param {string} fileKey
  * @param options
  * @param {function():?} callback
  */
@@ -89,7 +89,7 @@ var scheduleTranscoding = function (fileKey, options, callback) {
         'Outputs': [
             {
                 'Key': resultKey,
-                'PresetId': presetId,
+                'PresetId': options.presetId,
                 'ThumbnailPattern': resultThumbnailPattern,
                 'Rotate': 'auto'
             }
@@ -132,8 +132,9 @@ FS.Store.TranscodedS3 = function (name, options) {
     if (!options.pipelineId) {
         throw new Error("please provide a Elastic Transcoder pipelineId");
     }
+    AWS.config.update({accessKeyId:options.accessKeyId, secretAccessKey:options.secretAccessKey});
+    AWS.config.update({region: options.region});
 
-    
     var upload = Npm.require('s3-write-stream')({
         accessKeyId: options.accessKeyId,
         secretAccessKey: options.secretAccessKey,
@@ -143,14 +144,20 @@ FS.Store.TranscodedS3 = function (name, options) {
         typeName: 'storage.transcodedS3',
         fileKey: function (fileObj) {
             // Lookup the copy
-            var store = fileObj && fileObj.copies && fileObj.copies[name];
-            // If the store and key is found return the key
-            if (store && store.key) return store.key;
+            var fKey;
 
-            // If no store key found we resolve / generate a key
-            return fileObj.collectionName + '/' + fileObj._id + '-' + fileObj.name;
+            var info = fileObj && fileObj._getInfo(name, {updateFileRecordFirst: false});
+
+            // If the store and key is found return the key
+            if (info && info.key) {
+                fKey =  info.key;
+            }else {
+                fKey = fileObj.collectionName + '/' + fileObj._id + '-' + fileObj.name({updateFileRecordFirst: false});
+            }
+
+            return  fKey;
         },
-        createReadStream: function (fileKey, options) {
+        createReadStream: function (fileKey, readOptions) {
 
             /**
              *
@@ -160,7 +167,7 @@ FS.Store.TranscodedS3 = function (name, options) {
             /**
              * @type {string}
              */
-            var key = fullOutKey(fileKey, presetId);
+            var key = fullOutKey(fileKey, options.presetId);
 
             /**
              *
@@ -179,8 +186,11 @@ FS.Store.TranscodedS3 = function (name, options) {
          * @param {Object.<string,*>} options
          * @return {stream.Writable}
          */
-        createWriteStream: function (fileKey, options) {
+        createWriteStream: function (fileKey, writeOptions) {
 
+            if(FS.debug){
+                console.log("Creating upload write stream for", fileKey)
+            }
 
             /**
              * @type {string}
@@ -197,8 +207,15 @@ FS.Store.TranscodedS3 = function (name, options) {
             var transcodeAfterUpload = function () {
 
 
-                scheduleTranscoding(fileKey, function (err, data) {
+                if(FS.debug){
+                    console.log("Scheduling transcoding");
+                }
 
+                scheduleTranscoding(fileKey, options, function (err, data) {
+
+                    if(FS.debug){
+                        console.log("Transcoding finish", err);
+                    }
                     /**
                      *
                      * @type {Date}
