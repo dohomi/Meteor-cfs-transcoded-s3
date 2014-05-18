@@ -72,7 +72,7 @@ var scheduleTranscoding = function (fileKey, options, callback) {
     var elasticTranscoder = new AWS.ElasticTranscoder();
     /**
      *
-     * @type {{PipelineId: (transcodedS3.pipelineId|*|module.pipelineDefinition.pipelineId|params.pipelineId|module.pipelineId), Input: {Key: string, FrameRate: string, Resolution: string, AspectRatio: string, Interlaced: string, Container: string}, OutputKeyPrefix: string, Outputs: *[]}}
+     * @type {{PipelineId: string, Input: {Key: string, FrameRate: string, Resolution: string, AspectRatio: string, Interlaced: string, Container: string}, OutputKeyPrefix: string, Outputs: *[]}}
      */
     var params = {
         'PipelineId': options.pipelineId,
@@ -133,7 +133,7 @@ FS.Store.TranscodedS3 = function (name, options) {
         throw new Error("please provide a Elastic Transcoder pipelineId");
     }
 
-
+    
     var upload = Npm.require('s3-write-stream')({
         accessKeyId: options.accessKeyId,
         secretAccessKey: options.secretAccessKey,
@@ -152,10 +152,20 @@ FS.Store.TranscodedS3 = function (name, options) {
         },
         createReadStream: function (fileKey, options) {
 
-            console.log("Creating read for", fileKey)
+            /**
+             *
+             * @type {AWS.S3}
+             */
             var s3 = new AWS.S3();
+            /**
+             * @type {string}
+             */
             var key = fullOutKey(fileKey, presetId);
-            console.log("Retrieving", key);
+
+            /**
+             *
+             * @type {AWS.Request}
+             */
             var req = s3.getObject({
                 Bucket: options.bucket,
                 Key: key
@@ -163,40 +173,77 @@ FS.Store.TranscodedS3 = function (name, options) {
             return req.createReadStream();
 
         },
+        /**
+         *
+         * @param {string} fileKey
+         * @param {Object.<string,*>} options
+         * @return {stream.Writable}
+         */
         createWriteStream: function (fileKey, options) {
 
 
-            console.log("Creating write stream for", fileKey)
+            /**
+             * @type {string}
+             */
             var destinationKey = inputKey(fileKey);
-            console.log("Uploading to", destinationKey);
+            /**
+             * @type {stream.Writable}
+             */
             var writeStream = upload(destinationKey);
-            writeStream.on("end", function () {
 
-                console.log("done uploading, scheduling transcoding");
+            /**
+             *
+             */
+            var transcodeAfterUpload = function () {
+
+
                 scheduleTranscoding(fileKey, function (err, data) {
 
-
-                    console.log("done transcoding", data);
+                    /**
+                     *
+                     * @type {Date}
+                     */
                     var end = new Date();
 
                     if (err) {
-
-                        console.log("An error during transcoding", err);
+                        writeStream.emit("error", {msg: "transcoding error", detail: err});
                     } else {
 
                         writeStream.emit("stored", {
-
                             fileKey: fileKey,
                             storedAt: end
                         });
                     }
                 });
-            });
+            };
+            writeStream.on("end", transcodeAfterUpload);
             return writeStream;
 
         },
         remove: function (fileKey, callback) {
             throw new Error("S3 storage adapter does not support the sync option");
+
+            /**
+             *
+             * @type {{Bucket: string, Key: string}}
+             */
+            var params = {
+                Bucket: options.bucket,
+                Key: key
+            };
+            /**
+             *
+             * @type {AWS.Request}
+             */
+            s3.deleteObject(params, function (err, data) {
+                if (err) {
+                    // an error occurred
+                    console.log(err, err.stack);
+                }
+                else {
+                    console.log(data);           // successful response
+                }
+            });
 
         },
         watch: function () {
