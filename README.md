@@ -7,13 +7,13 @@ A CFS Storage Adapter that uploads the file to AWS S3 and transcodes it via the 
 ##Setup
 - Create an S3 Bucket
 - Create an Transcoding Pipeline
-- Create IAM User with sufficient rights, for example:
-  - Amazon Elastic Transcoder Jobs Submitter
-  - Amazon S3 Full Access
-  - 
+- Create IAM User with sufficient rights, for example: 
+  - "Amazon Elastic Transcoder Jobs Submitter"
+  - "Amazon S3 Full Access"
+
 ##Usage
 
-The Store
+###The Store
 ```
 var transcodedS3 = new FS.Store.TranscodedS3("webVideos", {
 
@@ -27,7 +27,7 @@ var transcodedS3 = new FS.Store.TranscodedS3("webVideos", {
 
 });
 ```
-The Collection
+###The Collection
 ```
 VideoFS = new FS.Collection("videoFS", {
     stores: [transcodedS3]
