@@ -142,22 +142,23 @@ FS.Store.TranscodedS3 = function (name, options) {
     });
     return new FS.StorageAdapter(name, options, {
         typeName: 'storage.transcodedS3',
-        fileKey: function (fileObj) {
+        fileKey: function(fileObj) { //copied from cfs-s3
             // Lookup the copy
-            var fKey;
-
-            var info = fileObj && fileObj._getInfo(name, {updateFileRecordFirst: false});
-
+            var info = fileObj && fileObj._getInfo(name);
             // If the store and key is found return the key
-            if (info && info.key) {
-                fKey =  info.key;
-            }else {
-                fKey = fileObj.collectionName + '/' + fileObj._id + '-' + fileObj.name({updateFileRecordFirst: false});
-            }
+            if (info && info.key) return info.key;
 
-            return  fKey;
+            var filename = fileObj.name();
+            var filenameInStore = fileObj.name({store: name});
+
+            // If no store key found we resolve / generate a key
+            return fileObj.collectionName + '/' + fileObj._id + '-' + (filenameInStore || filename);
         },
         createReadStream: function (fileKey, readOptions) {
+
+            if(FS.debug){
+                console.log("Creating read stream for", fileKey)
+            }
 
             /**
              *
@@ -238,7 +239,7 @@ FS.Store.TranscodedS3 = function (name, options) {
 
         },
         remove: function (fileKey, callback) {
-            throw new Error("S3 storage adapter does not support the sync option");
+
 
             /**
              *

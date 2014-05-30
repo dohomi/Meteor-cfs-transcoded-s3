@@ -13,10 +13,13 @@
  */
 FS.Store.TranscodedS3 = function(name, options) {
     var self = this;
-    if (!(self instanceof FS.Store.TranscodedS3))
+    if (!(self instanceof FS.Store.TranscodedS3)){
         throw new Error('FS.Store.TranscodedS3 missing keyword "new"');
+    }
 
-    FS.Utility.extend(this, { name: name, sync: false, maxTries: 5 }, options || {});
+    return new FS.StorageAdapter(name, options, {
+        typeName: 'storage.transcodedS3'
+    });
 };
 
 FS.Store.TranscodedS3.prototype.fileKey = function(fileObj) {
