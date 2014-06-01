@@ -154,6 +154,11 @@ FS.Store.TranscodedS3 = function (name, options) {
         Bucket: options.bucket,
         endpoint : options.endpoint
     });
+    /**
+     *
+     * @type {AWS.S3}
+     */
+    var s3 = new AWS.S3();
     return new FS.StorageAdapter(name, options, {
         typeName: 'storage.transcodedS3',
         fileKey: function(fileObj) { //copied from cfs-s3
@@ -174,11 +179,7 @@ FS.Store.TranscodedS3 = function (name, options) {
                 console.log("Creating read stream for", fileKey)
             }
 
-            /**
-             *
-             * @type {AWS.S3}
-             */
-            var s3 = new AWS.S3();
+
             /**
              * @type {string}
              */
