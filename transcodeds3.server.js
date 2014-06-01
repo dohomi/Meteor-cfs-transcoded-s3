@@ -132,9 +132,9 @@ FS.Store.TranscodedS3 = function (name, options) {
     if (!options.region) {
         throw new Error("please provide a AWS region");
     }
-    if (options.region!=="us-east-1" && !options.endpoint) {
-        throw new Error("please provide a S3 region endpoint");
-    }
+//    if (options.region!=="us-east-1" && !options.endpoint) {
+//        throw new Error("please provide a S3 region endpoint");
+//    }
     if (!options.presetId) {
         throw new Error("please provide a Elastic Transcoder presetId");
     }
