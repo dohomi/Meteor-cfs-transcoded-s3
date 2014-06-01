@@ -49,6 +49,8 @@ var thumbnailPattern = function (presetId) {
  */
 var scheduleTranscoding = function (fileKey, options, callback) {
 
+
+
     /**
      * @type {string}
      */
@@ -96,6 +98,10 @@ var scheduleTranscoding = function (fileKey, options, callback) {
         ]
     };
 
+    if(FS.debug){
+        console.log("Scheduling transcoding wit params:", params);
+    }
+
     elasticTranscoder.createJob(params, callback);
 };
 /**
@@ -126,6 +132,9 @@ FS.Store.TranscodedS3 = function (name, options) {
     if (!options.region) {
         throw new Error("please provide a AWS region");
     }
+    if (options.region!=="us-east-1" && !options.endpoint) {
+        throw new Error("please provide a S3 region endpoint");
+    }
     if (!options.presetId) {
         throw new Error("please provide a Elastic Transcoder presetId");
     }
@@ -134,11 +143,16 @@ FS.Store.TranscodedS3 = function (name, options) {
     }
     AWS.config.update({accessKeyId:options.accessKeyId, secretAccessKey:options.secretAccessKey});
     AWS.config.update({region: options.region});
+    if(options.endpoint){
+        AWS.config.update({endpoint: options.endpoint});
+    }
+
 
     var upload = Npm.require('s3-write-stream')({
         accessKeyId: options.accessKeyId,
         secretAccessKey: options.secretAccessKey,
-        Bucket: options.bucket
+        Bucket: options.bucket,
+        endpoint : options.endpoint
     });
     return new FS.StorageAdapter(name, options, {
         typeName: 'storage.transcodedS3',
@@ -207,16 +221,9 @@ FS.Store.TranscodedS3 = function (name, options) {
              */
             var transcodeAfterUpload = function () {
 
-
-                if(FS.debug){
-                    console.log("Scheduling transcoding");
-                }
-
                 scheduleTranscoding(fileKey, options, function (err, data) {
 
-                    if(FS.debug){
-                        console.log("Transcoding finish", err);
-                    }
+
                     /**
                      *
                      * @type {Date}
@@ -224,9 +231,12 @@ FS.Store.TranscodedS3 = function (name, options) {
                     var end = new Date();
 
                     if (err) {
+                        if(FS.debug){
+                            console.log("Transcoding error", err);
+                        }
                         writeStream.emit("error", {msg: "transcoding error", detail: err});
                     } else {
-
+                        console.log("Transcoding finished", err);
                         writeStream.emit("stored", {
                             fileKey: fileKey,
                             storedAt: end
